@@ -2,24 +2,22 @@
 
 ## v0.1.0 - Sprint 0
 
-### Added
-
 - Spring Boot project initialization
-- PostgreSQL integration
-- Supabase cloud database
+- PostgreSQL integration 
+- Supabase cloud database 
 - User entity
 - User repository
 - Authentication DTOs
 - Documentation
 - Architecture Diagram
 - ER Diagram
+### Sprint 0 (done)
+
 
 ---
 
 ## v0.2.0
-
-Upcoming
-
-- Register API
-- Login API
-- JWT Authentication
+- Register API (done)
+- Login API (done)
+- JWT Authentication (done)
+- Authorization
