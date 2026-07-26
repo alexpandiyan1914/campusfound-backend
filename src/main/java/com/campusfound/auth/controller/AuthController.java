@@ -2,6 +2,7 @@ package com.campusfound.auth.controller;
 
 import com.campusfound.auth.dto.AuthResponse;
 import com.campusfound.auth.dto.RegisterRequest;
+import com.campusfound.auth.dto.LoginRequest;
 import com.campusfound.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,5 +18,12 @@ public class AuthController {
     @PostMapping("/register")
     public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
         return authService.register(request);
+    }
+
+    @PostMapping("/login")
+    public AuthResponse login(
+            @Valid @RequestBody LoginRequest request
+    ) {
+        return authService.login(request);
     }
 }

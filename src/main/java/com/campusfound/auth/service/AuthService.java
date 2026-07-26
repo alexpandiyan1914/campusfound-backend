@@ -2,12 +2,14 @@ package com.campusfound.auth.service;
 
 import com.campusfound.auth.dto.AuthResponse;
 import com.campusfound.auth.dto.RegisterRequest;
+import com.campusfound.auth.dto.LoginRequest;
 import com.campusfound.user.entity.Role;
 import com.campusfound.user.entity.User;
 import com.campusfound.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.campusfound.security.jwt.JwtService;
 
 @Service
 @RequiredArgsConstructor
@@ -15,6 +17,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public AuthResponse register(RegisterRequest request) {
 
@@ -34,6 +37,26 @@ public class AuthService {
 
         userRepository.save(user);
 
-        return new AuthResponse("User registered successfully");
+        return new AuthResponse(
+                null,
+                "User registered successfully"
+        );
+    }
+
+    public AuthResponse login(LoginRequest request) {
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid email or password");
+        }
+
+        String token = jwtService.generateToken(user.getEmail());
+
+        return new AuthResponse(
+                token,
+                "Login successful"
+        );
     }
 }
