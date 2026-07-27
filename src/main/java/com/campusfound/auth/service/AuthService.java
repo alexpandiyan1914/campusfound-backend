@@ -1,5 +1,4 @@
 package com.campusfound.auth.service;
-
 import com.campusfound.auth.dto.AuthResponse;
 import com.campusfound.auth.dto.RegisterRequest;
 import com.campusfound.auth.dto.LoginRequest;
@@ -52,7 +51,7 @@ public class AuthService {
             throw new RuntimeException("Invalid email or password");
         }
 
-        String token = jwtService.generateToken(user.getEmail());
+        String token = jwtService.generateToken(user);
 
         return new AuthResponse(
                 token,

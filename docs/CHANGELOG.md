@@ -20,4 +20,6 @@
 - Register API (done)
 - Login API (done)
 - JWT Authentication (done)
-- Authorization
+- Authorization (done)
+
+---
