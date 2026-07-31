@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -55,6 +56,48 @@ public class ItemServiceImpl implements ItemService {
                 .imageUrl(savedItem.getImageUrl())
                 .reportedBy(user.getFullName())
                 .createdAt(savedItem.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    public List<ItemResponse> getAllItems() {
+
+        return itemRepository.findAll()
+                .stream()
+                .map(item -> ItemResponse.builder()
+                        .id(item.getId())
+                        .title(item.getTitle())
+                        .description(item.getDescription())
+                        .category(item.getCategory())
+                        .location(item.getLocation())
+                        .lostFoundDate(item.getLostFoundDate())
+                        .type(item.getType())
+                        .status(item.getStatus())
+                        .imageUrl(item.getImageUrl())
+                        .reportedBy(item.getReportedBy().getFullName())
+                        .createdAt(item.getCreatedAt())
+                        .build())
+                .toList();
+    }
+
+    @Override
+    public ItemResponse getItemById(Long id) {
+
+        Item item = itemRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Item not found"));
+
+        return ItemResponse.builder()
+                .id(item.getId())
+                .title(item.getTitle())
+                .description(item.getDescription())
+                .category(item.getCategory())
+                .location(item.getLocation())
+                .lostFoundDate(item.getLostFoundDate())
+                .type(item.getType())
+                .status(item.getStatus())
+                .imageUrl(item.getImageUrl())
+                .reportedBy(item.getReportedBy().getFullName())
+                .createdAt(item.getCreatedAt())
                 .build();
     }
 }

@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/items")
@@ -17,6 +19,7 @@ public class ItemController {
     private final ItemService itemService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ItemResponse> createItem(
             @Valid @RequestBody CreateItemRequest request) {
 
@@ -25,5 +28,18 @@ public class ItemController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<ItemResponse>> getAllItems() {
+
+        return ResponseEntity.ok(itemService.getAllItems());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ItemResponse> getItemById(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(itemService.getItemById(id));
     }
 }
