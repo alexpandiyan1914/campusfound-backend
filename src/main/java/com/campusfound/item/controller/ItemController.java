@@ -42,4 +42,23 @@ public class ItemController {
 
         return ResponseEntity.ok(itemService.getItemById(id));
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ItemResponse> updateItem(
+            @PathVariable Long id,
+            @RequestBody CreateItemRequest request) {
+
+        return ResponseEntity.ok(itemService.updateItem(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> deleteItem(
+            @PathVariable Long id) {
+
+        itemService.deleteItem(id);
+
+        return ResponseEntity.ok("Item deleted successfully");
+    }
 }

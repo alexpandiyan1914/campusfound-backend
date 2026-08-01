@@ -100,4 +100,43 @@ public class ItemServiceImpl implements ItemService {
                 .createdAt(item.getCreatedAt())
                 .build();
     }
+
+    @Override
+    public ItemResponse updateItem(Long id, CreateItemRequest request) {
+
+        Item item = itemRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Item not found"));
+
+        item.setTitle(request.getTitle());
+        item.setDescription(request.getDescription());
+        item.setCategory(request.getCategory());
+        item.setLocation(request.getLocation());
+        item.setLostFoundDate(request.getLostFoundDate());
+        item.setType(request.getType());
+
+        Item updatedItem = itemRepository.save(item);
+
+        return ItemResponse.builder()
+                .id(updatedItem.getId())
+                .title(updatedItem.getTitle())
+                .description(updatedItem.getDescription())
+                .category(updatedItem.getCategory())
+                .location(updatedItem.getLocation())
+                .lostFoundDate(updatedItem.getLostFoundDate())
+                .type(updatedItem.getType())
+                .status(updatedItem.getStatus())
+                .imageUrl(updatedItem.getImageUrl())
+                .reportedBy(updatedItem.getReportedBy().getFullName())
+                .createdAt(updatedItem.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    public void deleteItem(Long id) {
+
+        Item item = itemRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Item not found"));
+
+        itemRepository.delete(item);
+    }
 }

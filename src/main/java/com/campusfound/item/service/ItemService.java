@@ -12,4 +12,8 @@ public interface ItemService {
 
     ItemResponse getItemById(Long id);
 
+    ItemResponse updateItem(Long id, CreateItemRequest request);
+
+    void deleteItem(Long id);
+
 }
