@@ -2,6 +2,8 @@ package com.campusfound.item.controller;
 
 import com.campusfound.item.dto.CreateItemRequest;
 import com.campusfound.item.dto.ItemResponse;
+import com.campusfound.item.entity.ItemStatus;
+import com.campusfound.item.entity.ItemType;
 import com.campusfound.item.service.ItemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -60,5 +62,28 @@ public class ItemController {
         itemService.deleteItem(id);
 
         return ResponseEntity.ok("Item deleted successfully");
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<ItemResponse>> searchItems(
+            @RequestParam String keyword) {
+
+        return ResponseEntity.ok(
+                itemService.searchItems(keyword)
+        );
+    }
+
+    @GetMapping("/filter")
+    public ResponseEntity<List<ItemResponse>> filterItems(
+
+            @RequestParam(required = false) String category,
+
+            @RequestParam(required = false) ItemType type,
+
+            @RequestParam(required = false) ItemStatus status) {
+
+        return ResponseEntity.ok(
+                itemService.filterItems(category, type, status)
+        );
     }
 }

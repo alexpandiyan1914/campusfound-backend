@@ -4,6 +4,7 @@ import com.campusfound.item.dto.CreateItemRequest;
 import com.campusfound.item.dto.ItemResponse;
 import com.campusfound.item.entity.Item;
 import com.campusfound.item.entity.ItemStatus;
+import com.campusfound.item.entity.ItemType;
 import com.campusfound.item.repository.ItemRepository;
 import com.campusfound.item.service.ItemService;
 import com.campusfound.user.entity.User;
@@ -138,5 +139,57 @@ public class ItemServiceImpl implements ItemService {
                 .orElseThrow(() -> new RuntimeException("Item not found"));
 
         itemRepository.delete(item);
+    }
+
+    private ItemResponse mapToResponse(Item item) {
+
+        return ItemResponse.builder()
+                .id(item.getId())
+                .title(item.getTitle())
+                .description(item.getDescription())
+                .category(item.getCategory())
+                .location(item.getLocation())
+                .lostFoundDate(item.getLostFoundDate())
+                .type(item.getType())
+                .status(item.getStatus())
+                .imageUrl(item.getImageUrl())
+                .reportedBy(item.getReportedBy().getFullName())
+                .createdAt(item.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    public List<ItemResponse> searchItems(String keyword) {
+
+        return itemRepository.findByTitleContainingIgnoreCase(keyword)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Override
+    public List<ItemResponse> filterItems(
+            String category,
+            ItemType type,
+            ItemStatus status) {
+
+        List<Item> items;
+
+        if (category != null) {
+            items = itemRepository.findByCategoryIgnoreCase(category);
+        }
+        else if (type != null) {
+            items = itemRepository.findByType(type);
+        }
+        else if (status != null) {
+            items = itemRepository.findByStatus(status);
+        }
+        else {
+            items = itemRepository.findAll();
+        }
+
+        return items.stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 }
