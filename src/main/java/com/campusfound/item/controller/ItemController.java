@@ -7,6 +7,9 @@ import com.campusfound.item.entity.ItemType;
 import com.campusfound.item.service.ItemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -33,9 +36,17 @@ public class ItemController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ItemResponse>> getAllItems() {
+    public ResponseEntity<Page<ItemResponse>> getAllItems(
 
-        return ResponseEntity.ok(itemService.getAllItems());
+            @PageableDefault(
+                    page = 0,
+                    size = 10,
+                    sort = "createdAt"
+            ) Pageable pageable) {
+
+        return ResponseEntity.ok(
+                itemService.getAllItems(pageable)
+        );
     }
 
     @GetMapping("/{id}")

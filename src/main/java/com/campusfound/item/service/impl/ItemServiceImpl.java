@@ -10,6 +10,8 @@ import com.campusfound.item.service.ItemService;
 import com.campusfound.user.entity.User;
 import com.campusfound.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -61,24 +63,10 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    public List<ItemResponse> getAllItems() {
+    public Page<ItemResponse> getAllItems(Pageable pageable) {
 
-        return itemRepository.findAll()
-                .stream()
-                .map(item -> ItemResponse.builder()
-                        .id(item.getId())
-                        .title(item.getTitle())
-                        .description(item.getDescription())
-                        .category(item.getCategory())
-                        .location(item.getLocation())
-                        .lostFoundDate(item.getLostFoundDate())
-                        .type(item.getType())
-                        .status(item.getStatus())
-                        .imageUrl(item.getImageUrl())
-                        .reportedBy(item.getReportedBy().getFullName())
-                        .createdAt(item.getCreatedAt())
-                        .build())
-                .toList();
+        return itemRepository.findAll(pageable)
+                .map(this::mapToResponse);
     }
 
     @Override
