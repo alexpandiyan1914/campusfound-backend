@@ -43,6 +43,7 @@ public class ItemServiceImpl implements ItemService {
                 .type(request.getType())
                 .status(ItemStatus.OPEN)
                 .reportedBy(user)
+                .imageUrl(request.getImageUrl())
                 .build();
 
         Item savedItem = itemRepository.save(item);
@@ -102,6 +103,7 @@ public class ItemServiceImpl implements ItemService {
         item.setLocation(request.getLocation());
         item.setLostFoundDate(request.getLostFoundDate());
         item.setType(request.getType());
+        item.setImageUrl(request.getImageUrl());
 
         Item updatedItem = itemRepository.save(item);
 

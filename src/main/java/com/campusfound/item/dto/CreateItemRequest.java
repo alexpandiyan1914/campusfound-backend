@@ -27,4 +27,6 @@ public class CreateItemRequest {
     @NotNull
     private ItemType type;
 
+    private String imageUrl;
+
 }
