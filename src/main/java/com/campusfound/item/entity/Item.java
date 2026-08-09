@@ -26,13 +26,10 @@ public class Item {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ItemType type;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ItemStatus status;
+    private ItemStatus status = ItemStatus.ACTIVE;
 
     @Column(nullable = false)
     private String category;
@@ -60,7 +57,7 @@ public class Item {
         updatedAt = LocalDateTime.now();
 
         if (status == null) {
-            status = ItemStatus.OPEN;
+            status = ItemStatus.ACTIVE;
         }
     }
 

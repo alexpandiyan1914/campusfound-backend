@@ -4,7 +4,6 @@ import com.campusfound.item.dto.CreateItemRequest;
 import com.campusfound.item.dto.ItemResponse;
 import com.campusfound.item.entity.Item;
 import com.campusfound.item.entity.ItemStatus;
-import com.campusfound.item.entity.ItemType;
 import com.campusfound.item.repository.ItemRepository;
 import com.campusfound.item.service.ItemService;
 import com.campusfound.user.entity.User;
@@ -15,7 +14,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import java.util.*;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +27,8 @@ public class ItemServiceImpl implements ItemService {
     @Override
     public ItemResponse createItem(CreateItemRequest request) {
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
 
         String email = authentication.getName();
 
@@ -40,27 +41,14 @@ public class ItemServiceImpl implements ItemService {
                 .category(request.getCategory())
                 .location(request.getLocation())
                 .lostFoundDate(request.getLostFoundDate())
-                .type(request.getType())
-                .status(ItemStatus.OPEN)
+                .status(ItemStatus.ACTIVE)
                 .reportedBy(user)
                 .imageUrl(request.getImageUrl())
                 .build();
 
         Item savedItem = itemRepository.save(item);
 
-        return ItemResponse.builder()
-                .id(savedItem.getId())
-                .title(savedItem.getTitle())
-                .description(savedItem.getDescription())
-                .category(savedItem.getCategory())
-                .location(savedItem.getLocation())
-                .lostFoundDate(savedItem.getLostFoundDate())
-                .type(savedItem.getType())
-                .status(savedItem.getStatus())
-                .imageUrl(savedItem.getImageUrl())
-                .reportedBy(user.getFullName())
-                .createdAt(savedItem.getCreatedAt())
-                .build();
+        return mapToResponse(savedItem);
     }
 
     @Override
@@ -76,23 +64,13 @@ public class ItemServiceImpl implements ItemService {
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Item not found"));
 
-        return ItemResponse.builder()
-                .id(item.getId())
-                .title(item.getTitle())
-                .description(item.getDescription())
-                .category(item.getCategory())
-                .location(item.getLocation())
-                .lostFoundDate(item.getLostFoundDate())
-                .type(item.getType())
-                .status(item.getStatus())
-                .imageUrl(item.getImageUrl())
-                .reportedBy(item.getReportedBy().getFullName())
-                .createdAt(item.getCreatedAt())
-                .build();
+        return mapToResponse(item);
     }
 
     @Override
-    public ItemResponse updateItem(Long id, CreateItemRequest request) {
+    public ItemResponse updateItem(
+            Long id,
+            CreateItemRequest request) {
 
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Item not found"));
@@ -102,24 +80,11 @@ public class ItemServiceImpl implements ItemService {
         item.setCategory(request.getCategory());
         item.setLocation(request.getLocation());
         item.setLostFoundDate(request.getLostFoundDate());
-        item.setType(request.getType());
         item.setImageUrl(request.getImageUrl());
 
         Item updatedItem = itemRepository.save(item);
 
-        return ItemResponse.builder()
-                .id(updatedItem.getId())
-                .title(updatedItem.getTitle())
-                .description(updatedItem.getDescription())
-                .category(updatedItem.getCategory())
-                .location(updatedItem.getLocation())
-                .lostFoundDate(updatedItem.getLostFoundDate())
-                .type(updatedItem.getType())
-                .status(updatedItem.getStatus())
-                .imageUrl(updatedItem.getImageUrl())
-                .reportedBy(updatedItem.getReportedBy().getFullName())
-                .createdAt(updatedItem.getCreatedAt())
-                .build();
+        return mapToResponse(updatedItem);
     }
 
     @Override
@@ -131,6 +96,52 @@ public class ItemServiceImpl implements ItemService {
         itemRepository.delete(item);
     }
 
+    @Override
+    public List<ItemResponse> searchItems(String keyword) {
+
+        return itemRepository
+                .findByTitleContainingIgnoreCase(keyword)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Override
+    public List<ItemResponse> filterItems(
+            String category,
+            ItemStatus status) {
+
+        List<Item> items;
+
+        if (category != null && status != null) {
+
+            /*
+             * For now, repository only has individual filters.
+             * We combine them in memory.
+             */
+            items = itemRepository.findByCategoryIgnoreCase(category)
+                    .stream()
+                    .filter(item -> item.getStatus() == status)
+                    .toList();
+
+        } else if (category != null) {
+
+            items = itemRepository.findByCategoryIgnoreCase(category);
+
+        } else if (status != null) {
+
+            items = itemRepository.findByStatus(status);
+
+        } else {
+
+            items = itemRepository.findAll();
+        }
+
+        return items.stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
     private ItemResponse mapToResponse(Item item) {
 
         return ItemResponse.builder()
@@ -140,46 +151,10 @@ public class ItemServiceImpl implements ItemService {
                 .category(item.getCategory())
                 .location(item.getLocation())
                 .lostFoundDate(item.getLostFoundDate())
-                .type(item.getType())
                 .status(item.getStatus())
                 .imageUrl(item.getImageUrl())
                 .reportedBy(item.getReportedBy().getFullName())
                 .createdAt(item.getCreatedAt())
                 .build();
-    }
-
-    @Override
-    public List<ItemResponse> searchItems(String keyword) {
-
-        return itemRepository.findByTitleContainingIgnoreCase(keyword)
-                .stream()
-                .map(this::mapToResponse)
-                .toList();
-    }
-
-    @Override
-    public List<ItemResponse> filterItems(
-            String category,
-            ItemType type,
-            ItemStatus status) {
-
-        List<Item> items;
-
-        if (category != null) {
-            items = itemRepository.findByCategoryIgnoreCase(category);
-        }
-        else if (type != null) {
-            items = itemRepository.findByType(type);
-        }
-        else if (status != null) {
-            items = itemRepository.findByStatus(status);
-        }
-        else {
-            items = itemRepository.findAll();
-        }
-
-        return items.stream()
-                .map(this::mapToResponse)
-                .toList();
     }
 }

@@ -3,7 +3,6 @@ package com.campusfound.item.service;
 import com.campusfound.item.dto.CreateItemRequest;
 import com.campusfound.item.dto.ItemResponse;
 import com.campusfound.item.entity.ItemStatus;
-import com.campusfound.item.entity.ItemType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -25,8 +24,6 @@ public interface ItemService {
 
     List<ItemResponse> filterItems(
             String category,
-            ItemType type,
             ItemStatus status
     );
-
 }

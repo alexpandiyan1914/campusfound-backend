@@ -1,7 +1,6 @@
 package com.campusfound.item.dto;
 
-import com.campusfound.item.entity.ItemType;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -21,12 +20,7 @@ public class CreateItemRequest {
     @NotBlank
     private String location;
 
-    @NotNull
     private LocalDate lostFoundDate;
 
-    @NotNull
-    private ItemType type;
-
     private String imageUrl;
-
 }

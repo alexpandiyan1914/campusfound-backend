@@ -1,7 +1,6 @@
 package com.campusfound.item.dto;
 
 import com.campusfound.item.entity.ItemStatus;
-import com.campusfound.item.entity.ItemType;
 import lombok.Builder;
 import lombok.Data;
 
@@ -24,8 +23,6 @@ public class ItemResponse {
 
     private LocalDate lostFoundDate;
 
-    private ItemType type;
-
     private ItemStatus status;
 
     private String imageUrl;
@@ -33,5 +30,4 @@ public class ItemResponse {
     private String reportedBy;
 
     private LocalDateTime createdAt;
-
 }
