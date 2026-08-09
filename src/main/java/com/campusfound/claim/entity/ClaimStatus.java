@@ -1,4 +1,7 @@
-package com.campusfound.claim.entity.Claim;
+package com.campusfound.claim.entity;
 
-public class ClaimStatus {
+public enum ClaimStatus {
+    PENDING,
+    APPROVED,
+    REJECTED
 }
