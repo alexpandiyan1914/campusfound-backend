@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -23,13 +24,14 @@ public class ItemController {
 
     private final ItemService itemService;
 
-    @PostMapping
+    @PostMapping(consumes = "multipart/form-data")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ItemResponse> createItem(
-            @Valid @RequestBody CreateItemRequest request) {
+            @Valid @RequestPart("item") CreateItemRequest request,
+            @RequestPart("image") MultipartFile image) {
 
         ItemResponse response =
-                itemService.createItem(request);
+                itemService.createItem(request, image);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

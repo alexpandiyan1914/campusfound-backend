@@ -21,6 +21,4 @@ public class CreateItemRequest {
     private String location;
 
     private LocalDate lostFoundDate;
-
-    private String imageUrl;
 }

@@ -14,6 +14,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import com.campusfound.image.service.ImageUploadService;
 
 import java.util.List;
 
@@ -23,17 +25,27 @@ public class ItemServiceImpl implements ItemService {
 
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
+    private final ImageUploadService imageUploadService;
 
     @Override
-    public ItemResponse createItem(CreateItemRequest request) {
+    public ItemResponse createItem(
+            CreateItemRequest request,
+            MultipartFile image) {
 
         Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
 
         String email = authentication.getName();
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("User not found")
+                );
+
+        String imageUrl =
+                imageUploadService.uploadItemImage(image);
 
         Item item = Item.builder()
                 .title(request.getTitle())
@@ -43,7 +55,7 @@ public class ItemServiceImpl implements ItemService {
                 .lostFoundDate(request.getLostFoundDate())
                 .status(ItemStatus.ACTIVE)
                 .reportedBy(user)
-                .imageUrl(request.getImageUrl())
+                .imageUrl(imageUrl)
                 .build();
 
         Item savedItem = itemRepository.save(item);
@@ -80,7 +92,6 @@ public class ItemServiceImpl implements ItemService {
         item.setCategory(request.getCategory());
         item.setLocation(request.getLocation());
         item.setLostFoundDate(request.getLostFoundDate());
-        item.setImageUrl(request.getImageUrl());
 
         Item updatedItem = itemRepository.save(item);
 
