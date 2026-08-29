@@ -36,18 +36,40 @@ public class EmailVerificationService {
             );
         }
 
-        String otp = generateOtp();
-
-        String otpHash = passwordEncoder.encode(otp);
-
         EmailVerification verification =
                 verificationRepository
                         .findByEmail(normalizedEmail)
-                        .orElse(
-                                EmailVerification.builder()
-                                        .email(normalizedEmail)
-                                        .build()
-                        );
+                        .orElse(null);
+
+        // RESEND COOLDOWN
+        if (verification != null
+                && verification.getCreatedAt() != null) {
+
+            LocalDateTime resendAllowedAt =
+                    verification.getCreatedAt()
+                            .plusSeconds(60);
+
+            if (LocalDateTime.now()
+                    .isBefore(resendAllowedAt)) {
+
+                throw new RuntimeException(
+                        "Please wait before requesting another OTP"
+                );
+            }
+        }
+
+        String otp = generateOtp();
+
+        String otpHash =
+                passwordEncoder.encode(otp);
+
+        if (verification == null) {
+
+            verification =
+                    EmailVerification.builder()
+                            .email(normalizedEmail)
+                            .build();
+        }
 
         verification.setOtpHash(otpHash);
         verification.setExpiresAt(
