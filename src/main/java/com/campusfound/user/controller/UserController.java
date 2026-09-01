@@ -1,10 +1,14 @@
 package com.campusfound.user.controller;
 
+import com.campusfound.backend.dto.ChangePasswordRequest;
 import com.campusfound.user.dto.UpdateProfileRequest;
 import com.campusfound.user.dto.UserResponse;
 import com.campusfound.user.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -28,6 +32,21 @@ public class UserController {
 
         return ResponseEntity.ok(
                 userService.updateProfile(request)
+        );
+    }
+
+    @PutMapping("/me/password")
+    public ResponseEntity<String> changePassword(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        userService.changePassword(
+                userDetails.getUsername(),
+                request
+        );
+
+        return ResponseEntity.ok(
+                "Password changed successfully"
         );
     }
 }

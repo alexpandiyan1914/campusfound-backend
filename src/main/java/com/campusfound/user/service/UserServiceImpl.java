@@ -1,11 +1,13 @@
 package com.campusfound.user.service;
 
+import com.campusfound.backend.dto.ChangePasswordRequest;
 import com.campusfound.user.dto.UpdateProfileRequest;
 import com.campusfound.user.dto.UserResponse;
 import com.campusfound.user.entity.User;
 import com.campusfound.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserResponse getCurrentUser() {
@@ -58,5 +61,48 @@ public class UserServiceImpl implements UserService {
                 .year(user.getYear())
                 .role(user.getRole())
                 .build();
+    }
+
+    @Override
+    public void changePassword(
+            String email,
+            ChangePasswordRequest request
+    ) {
+
+        User user = userRepository
+                .findByEmail(email)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "User not found"
+                        )
+                );
+
+        // Verify current password
+        if (!passwordEncoder.matches(
+                request.getCurrentPassword(),
+                user.getPassword()
+        )) {
+            throw new RuntimeException(
+                    "Current password is incorrect"
+            );
+        }
+
+        // Prevent reusing the same password
+        if (passwordEncoder.matches(
+                request.getNewPassword(),
+                user.getPassword()
+        )) {
+            throw new RuntimeException(
+                    "New password cannot be the same as current password"
+            );
+        }
+
+        user.setPassword(
+                passwordEncoder.encode(
+                        request.getNewPassword()
+                )
+        );
+
+        userRepository.save(user);
     }
 }
