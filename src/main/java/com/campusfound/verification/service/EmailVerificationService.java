@@ -3,6 +3,7 @@ package com.campusfound.verification.service;
 import com.campusfound.email.service.EmailService;
 import com.campusfound.user.repository.UserRepository;
 import com.campusfound.verification.entity.EmailVerification;
+import com.campusfound.verification.entity.OtpPurpose;
 import com.campusfound.verification.repository.EmailVerificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,16 +22,24 @@ public class EmailVerificationService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
 
-    private final SecureRandom secureRandom = new SecureRandom();
+    private final SecureRandom secureRandom =
+            new SecureRandom();
 
+    /*
+     * Registration OTP
+     */
     @Transactional
     public void sendOtp(String email) {
 
-        String normalizedEmail = email.trim().toLowerCase();
+        String normalizedEmail =
+                normalizeEmail(email);
 
         validateCollegeEmail(normalizedEmail);
 
-        if (userRepository.existsByEmail(normalizedEmail)) {
+        if (userRepository
+                .findByEmail(normalizedEmail)
+                .isPresent()) {
+
             throw new RuntimeException(
                     "An account already exists with this email"
             );
@@ -41,12 +50,17 @@ public class EmailVerificationService {
                         .findByEmail(normalizedEmail)
                         .orElse(null);
 
-        // RESEND COOLDOWN
+        /*
+         * 60 second resend cooldown
+         */
         if (verification != null
+                && verification.getPurpose()
+                == OtpPurpose.REGISTRATION
                 && verification.getCreatedAt() != null) {
 
             LocalDateTime resendAllowedAt =
-                    verification.getCreatedAt()
+                    verification
+                            .getCreatedAt()
                             .plusSeconds(60);
 
             if (LocalDateTime.now()
@@ -58,7 +72,8 @@ public class EmailVerificationService {
             }
         }
 
-        String otp = generateOtp();
+        String otp =
+                generateOtp();
 
         String otpHash =
                 passwordEncoder.encode(otp);
@@ -71,17 +86,33 @@ public class EmailVerificationService {
                             .build();
         }
 
-        verification.setOtpHash(otpHash);
-        verification.setExpiresAt(
-                LocalDateTime.now().plusMinutes(5)
+        /*
+         * Important:
+         * this OTP is specifically for registration.
+         */
+        verification.setPurpose(
+                OtpPurpose.REGISTRATION
         );
+
+        verification.setOtpHash(
+                otpHash
+        );
+
+        verification.setExpiresAt(
+                LocalDateTime.now()
+                        .plusMinutes(5)
+        );
+
         verification.setVerified(false);
         verification.setAttempts(0);
+
         verification.setCreatedAt(
                 LocalDateTime.now()
         );
 
-        verificationRepository.save(verification);
+        verificationRepository.save(
+                verification
+        );
 
         emailService.sendOtp(
                 normalizedEmail,
@@ -89,20 +120,26 @@ public class EmailVerificationService {
         );
     }
 
+    /*
+     * Verify registration OTP
+     */
     @Transactional
     public void verifyOtp(
             String email,
             String otp) {
 
         String normalizedEmail =
-                email.trim().toLowerCase();
+                normalizeEmail(email);
 
         EmailVerification verification =
                 verificationRepository
-                        .findByEmail(normalizedEmail)
+                        .findByEmailAndPurpose(
+                                normalizedEmail,
+                                OtpPurpose.REGISTRATION
+                        )
                         .orElseThrow(() ->
                                 new RuntimeException(
-                                        "OTP verification request not found"
+                                        "Registration OTP request not found"
                                 )
                         );
 
@@ -110,7 +147,10 @@ public class EmailVerificationService {
             return;
         }
 
-        if (LocalDateTime.now().isAfter(verification.getExpiresAt())) {
+        if (LocalDateTime.now()
+                .isAfter(
+                        verification.getExpiresAt()
+                )) {
 
             throw new RuntimeException(
                     "OTP has expired. Please request a new OTP"
@@ -118,20 +158,27 @@ public class EmailVerificationService {
         }
 
         if (verification.getAttempts() >= 5) {
+
             throw new RuntimeException(
                     "Too many incorrect attempts. Request a new OTP"
             );
         }
 
-        if (!passwordEncoder.matches(
-                otp,
-                verification.getOtpHash())) {
+        boolean matches =
+                passwordEncoder.matches(
+                        otp,
+                        verification.getOtpHash()
+                );
+
+        if (!matches) {
 
             verification.setAttempts(
                     verification.getAttempts() + 1
             );
 
-            verificationRepository.save(verification);
+            verificationRepository.save(
+                    verification
+            );
 
             throw new RuntimeException(
                     "Invalid OTP"
@@ -140,42 +187,79 @@ public class EmailVerificationService {
 
         verification.setVerified(true);
 
-        verificationRepository.save(verification);
-    }
-
-    public boolean isEmailVerified(String email) {
-
-        String normalizedEmail = email.trim().toLowerCase();
-
-        return verificationRepository
-                .findByEmail(normalizedEmail)
-                .map(EmailVerification::isVerified)
-                .orElse(false);
-    }
-
-    @Transactional
-    public void removeVerification(String email) {
-
-        verificationRepository.deleteByEmail(
-                email.trim().toLowerCase()
+        verificationRepository.save(
+                verification
         );
     }
 
-    private void validateCollegeEmail(String email) {
+    /*
+     * Used by register() before creating the User.
+     */
+    public boolean isEmailVerified(
+            String email) {
 
-        boolean valid = email.endsWith("@student.tce.edu") || email.endsWith("@tce.edu");
+        String normalizedEmail =
+                normalizeEmail(email);
 
-        if (!valid) {
-            throw new RuntimeException(
-                    "Please use a valid TCE email address"
-            );
-        }
+        return verificationRepository
+                .findByEmailAndPurpose(
+                        normalizedEmail,
+                        OtpPurpose.REGISTRATION
+                )
+                .map(
+                        EmailVerification::isVerified
+                )
+                .orElse(false);
+    }
+
+    /*
+     * Called after successful registration.
+     */
+    @Transactional
+    public void removeVerification(
+            String email) {
+
+        verificationRepository
+                .deleteByEmailAndPurpose(
+                        normalizeEmail(email),
+                        OtpPurpose.REGISTRATION
+                );
     }
 
     private String generateOtp() {
 
-        int number = secureRandom.nextInt(900000) + 100000;
+        int number =
+                secureRandom.nextInt(900000)
+                        + 100000;
 
         return String.valueOf(number);
+    }
+
+    private String normalizeEmail(
+            String email) {
+
+        return email
+                .trim()
+                .toLowerCase();
+    }
+
+    private void validateCollegeEmail(
+            String email) {
+
+        boolean valid =
+                email.endsWith(
+                        "@student.tce.edu"
+                )
+                        ||
+                        email.endsWith(
+                                "@tce.edu"
+                        );
+
+        if (!valid) {
+
+            throw new RuntimeException(
+                    "Please use a valid TCE email address"
+            );
+        }
     }
 }

@@ -71,4 +71,65 @@ public class EmailService {
                 .retrieve()
                 .toBodilessEntity();
     }
+
+    public void sendPasswordResetOtp(
+            String recipientEmail,
+            String otp) {
+
+        String htmlContent = """
+            <html>
+            <body style="font-family: Arial, sans-serif;">
+                <h2>CampusFound Password Reset</h2>
+
+                <p>We received a request to reset
+                your CampusFound password.</p>
+
+                <p>Your verification code is:</p>
+
+                <h1>%s</h1>
+
+                <p>This code is valid for 5 minutes.</p>
+
+                <p>If you did not request a password reset,
+                you can safely ignore this email.</p>
+
+                <br>
+                <p>CampusFound</p>
+            </body>
+            </html>
+            """.formatted(otp);
+
+        Map<String, Object> requestBody = Map.of(
+
+                "sender", Map.of(
+                        "name", senderName,
+                        "email", senderEmail
+                ),
+
+                "to", List.of(
+                        Map.of(
+                                "email",
+                                recipientEmail
+                        )
+                ),
+
+                "subject",
+                "Reset your CampusFound password",
+
+                "htmlContent",
+                htmlContent
+        );
+
+        restClient.post()
+                .uri(
+                        "https://api.brevo.com/v3/smtp/email"
+                )
+                .header("api-key", apiKey)
+                .contentType(
+                        MediaType.APPLICATION_JSON
+                )
+                .body(requestBody)
+                .retrieve()
+                .toBodilessEntity();
+    }
 }
