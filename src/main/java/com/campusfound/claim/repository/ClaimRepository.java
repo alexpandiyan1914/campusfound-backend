@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface ClaimRepository extends JpaRepository<Claim, Long> {
 
     Page<Claim> findByClaimedBy(
@@ -49,5 +51,11 @@ public interface ClaimRepository extends JpaRepository<Claim, Long> {
     void rejectOtherPendingClaims(
             @Param("itemId") Long itemId,
             @Param("approvedClaimId") Long approvedClaimId
+    );
+
+    List<Claim> findByItemIdAndStatusAndIdNot(
+            Long itemId,
+            ClaimStatus status,
+            Long claimId
     );
 }
