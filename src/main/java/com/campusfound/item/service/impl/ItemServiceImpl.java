@@ -1,11 +1,13 @@
 package com.campusfound.item.service.impl;
 
+import com.campusfound.image.service.ImageUploadService;
 import com.campusfound.item.dto.CreateItemRequest;
 import com.campusfound.item.dto.ItemResponse;
 import com.campusfound.item.entity.Item;
 import com.campusfound.item.entity.ItemStatus;
 import com.campusfound.item.repository.ItemRepository;
 import com.campusfound.item.service.ItemService;
+import com.campusfound.notification.service.BroadcastNotificationService;
 import com.campusfound.user.entity.User;
 import com.campusfound.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,8 +16,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import com.campusfound.image.service.ImageUploadService;
 
 import java.util.List;
 
@@ -26,55 +28,91 @@ public class ItemServiceImpl implements ItemService {
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
     private final ImageUploadService imageUploadService;
+    private final BroadcastNotificationService broadcastNotificationService;
 
     @Override
+    @Transactional
     public ItemResponse createItem(
             CreateItemRequest request,
-            MultipartFile image) {
+            MultipartFile image
+    ) {
 
         Authentication authentication =
                 SecurityContextHolder
                         .getContext()
                         .getAuthentication();
 
-        String email = authentication.getName();
+        String email =
+                authentication.getName();
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new RuntimeException("User not found")
-                );
+        User user =
+                userRepository
+                        .findByEmail(email)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "User not found"
+                                )
+                        );
 
         String imageUrl =
-                imageUploadService.uploadItemImage(image);
+                imageUploadService
+                        .uploadItemImage(image);
 
-        Item item = Item.builder()
-                .title(request.getTitle())
-                .description(request.getDescription())
-                .category(request.getCategory())
-                .location(request.getLocation())
-                .lostFoundDate(request.getLostFoundDate())
-                .status(ItemStatus.ACTIVE)
-                .reportedBy(user)
-                .imageUrl(imageUrl)
-                .build();
+        Item item =
+                Item.builder()
+                        .title(request.getTitle())
+                        .description(
+                                request.getDescription()
+                        )
+                        .category(
+                                request.getCategory()
+                        )
+                        .location(
+                                request.getLocation()
+                        )
+                        .lostFoundDate(
+                                request.getLostFoundDate()
+                        )
+                        .status(ItemStatus.ACTIVE)
+                        .reportedBy(user)
+                        .imageUrl(imageUrl)
+                        .build();
 
-        Item savedItem = itemRepository.save(item);
+        Item savedItem =
+                itemRepository.save(item);
+
+        broadcastNotificationService
+                .notifyNewItem(
+                        savedItem.getId(),
+                        savedItem.getTitle()
+                );
 
         return mapToResponse(savedItem);
     }
 
     @Override
-    public Page<ItemResponse> getAllItems(Pageable pageable) {
+    public Page<ItemResponse> getAllItems(
+            Pageable pageable
+    ) {
 
-        return itemRepository.findAll(pageable)
+        return itemRepository
+                .findAll(pageable)
                 .map(this::mapToResponse);
     }
 
     @Override
-    public ItemResponse getItemById(Long id) {
+    public ItemResponse getItemById(
+            Long id
+    ) {
 
-        Item item = itemRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Item not found"));
+        Item item =
+                itemRepository
+                        .findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Item not found"
+                                )
+                        );
 
         return mapToResponse(item);
     }
@@ -82,36 +120,70 @@ public class ItemServiceImpl implements ItemService {
     @Override
     public ItemResponse updateItem(
             Long id,
-            CreateItemRequest request) {
+            CreateItemRequest request
+    ) {
 
-        Item item = itemRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Item not found"));
+        Item item =
+                itemRepository
+                        .findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Item not found"
+                                )
+                        );
 
-        item.setTitle(request.getTitle());
-        item.setDescription(request.getDescription());
-        item.setCategory(request.getCategory());
-        item.setLocation(request.getLocation());
-        item.setLostFoundDate(request.getLostFoundDate());
+        item.setTitle(
+                request.getTitle()
+        );
 
-        Item updatedItem = itemRepository.save(item);
+        item.setDescription(
+                request.getDescription()
+        );
+
+        item.setCategory(
+                request.getCategory()
+        );
+
+        item.setLocation(
+                request.getLocation()
+        );
+
+        item.setLostFoundDate(
+                request.getLostFoundDate()
+        );
+
+        Item updatedItem =
+                itemRepository.save(item);
 
         return mapToResponse(updatedItem);
     }
 
     @Override
-    public void deleteItem(Long id) {
+    public void deleteItem(
+            Long id
+    ) {
 
-        Item item = itemRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Item not found"));
+        Item item =
+                itemRepository
+                        .findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Item not found"
+                                )
+                        );
 
         itemRepository.delete(item);
     }
 
     @Override
-    public List<ItemResponse> searchItems(String keyword) {
+    public List<ItemResponse> searchItems(
+            String keyword
+    ) {
 
         return itemRepository
-                .findByTitleContainingIgnoreCase(keyword)
+                .findByTitleContainingIgnoreCase(
+                        keyword
+                )
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
@@ -120,52 +192,84 @@ public class ItemServiceImpl implements ItemService {
     @Override
     public List<ItemResponse> filterItems(
             String category,
-            ItemStatus status) {
+            ItemStatus status
+    ) {
 
         List<Item> items;
 
-        if (category != null && status != null) {
+        if (category != null
+                && status != null) {
 
-            /*
-             * For now, repository only has individual filters.
-             * We combine them in memory.
-             */
-            items = itemRepository.findByCategoryIgnoreCase(category)
-                    .stream()
-                    .filter(item -> item.getStatus() == status)
-                    .toList();
+            items =
+                    itemRepository
+                            .findByCategoryIgnoreCase(
+                                    category
+                            )
+                            .stream()
+                            .filter(item ->
+                                    item.getStatus()
+                                            == status
+                            )
+                            .toList();
 
         } else if (category != null) {
 
-            items = itemRepository.findByCategoryIgnoreCase(category);
+            items =
+                    itemRepository
+                            .findByCategoryIgnoreCase(
+                                    category
+                            );
 
         } else if (status != null) {
 
-            items = itemRepository.findByStatus(status);
+            items =
+                    itemRepository
+                            .findByStatus(status);
 
         } else {
 
-            items = itemRepository.findAll();
+            items =
+                    itemRepository.findAll();
         }
 
-        return items.stream()
+        return items
+                .stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
-    private ItemResponse mapToResponse(Item item) {
+    private ItemResponse mapToResponse(
+            Item item
+    ) {
 
         return ItemResponse.builder()
                 .id(item.getId())
                 .title(item.getTitle())
-                .description(item.getDescription())
-                .category(item.getCategory())
-                .location(item.getLocation())
-                .lostFoundDate(item.getLostFoundDate())
-                .status(item.getStatus())
-                .imageUrl(item.getImageUrl())
-                .reportedBy(item.getReportedBy().getFullName())
-                .createdAt(item.getCreatedAt())
+                .description(
+                        item.getDescription()
+                )
+                .category(
+                        item.getCategory()
+                )
+                .location(
+                        item.getLocation()
+                )
+                .lostFoundDate(
+                        item.getLostFoundDate()
+                )
+                .status(
+                        item.getStatus()
+                )
+                .imageUrl(
+                        item.getImageUrl()
+                )
+                .reportedBy(
+                        item.getReportedBy()
+                                .getFullName()
+                )
+                .createdAt(
+                        item.getCreatedAt()
+                )
                 .build();
     }
 }

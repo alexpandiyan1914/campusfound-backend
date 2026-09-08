@@ -8,6 +8,7 @@ import com.campusfound.claim.repository.ClaimRepository;
 import com.campusfound.item.entity.Item;
 import com.campusfound.item.entity.ItemStatus;
 import com.campusfound.item.repository.ItemRepository;
+import com.campusfound.notification.service.NotificationService;
 import com.campusfound.user.entity.User;
 import com.campusfound.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class ClaimServiceImpl implements ClaimService {
@@ -24,16 +27,22 @@ public class ClaimServiceImpl implements ClaimService {
     private final ClaimRepository claimRepository;
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
-    public ClaimResponse createClaim(CreateClaimRequest request) {
+    public ClaimResponse createClaim(
+            CreateClaimRequest request
+    ) {
 
         User user = getCurrentUser();
 
-        Item item = itemRepository.findById(request.getItemId())
+        Item item = itemRepository
+                .findById(request.getItemId())
                 .orElseThrow(() ->
-                        new RuntimeException("Item not found")
+                        new RuntimeException(
+                                "Item not found"
+                        )
                 );
 
         if (item.getStatus() != ItemStatus.ACTIVE) {
@@ -42,10 +51,12 @@ public class ClaimServiceImpl implements ClaimService {
             );
         }
 
-        if (claimRepository.existsByItemIdAndClaimedById(
-                item.getId(),
-                user.getId()
-        )) {
+        if (claimRepository
+                .existsByItemIdAndClaimedById(
+                        item.getId(),
+                        user.getId()
+                )) {
+
             throw new RuntimeException(
                     "You have already submitted a claim for this item"
             );
@@ -58,30 +69,41 @@ public class ClaimServiceImpl implements ClaimService {
                 .status(ClaimStatus.PENDING)
                 .build();
 
-        Claim savedClaim = claimRepository.save(claim);
+        Claim savedClaim =
+                claimRepository.save(claim);
 
         return mapToResponse(savedClaim);
     }
 
     @Override
-    public Page<ClaimResponse> getMyClaims(Pageable pageable) {
+    public Page<ClaimResponse> getMyClaims(
+            Pageable pageable
+    ) {
 
         User user = getCurrentUser();
 
         return claimRepository
-                .findByClaimedBy(user, pageable)
+                .findByClaimedBy(
+                        user,
+                        pageable
+                )
                 .map(this::mapToResponse);
     }
 
     @Override
-    public ClaimResponse getClaimById(Long id) {
+    public ClaimResponse getClaimById(
+            Long id
+    ) {
 
         User user = getCurrentUser();
 
         Claim claim = getClaim(id);
 
-        if (user.getRole().name().equals("STUDENT")
-                && !claim.getClaimedBy().getId().equals(user.getId())) {
+        if (user.getRole().name()
+                .equals("STUDENT")
+                && !claim.getClaimedBy()
+                .getId()
+                .equals(user.getId())) {
 
             throw new RuntimeException(
                     "You are not allowed to view this claim"
@@ -92,7 +114,9 @@ public class ClaimServiceImpl implements ClaimService {
     }
 
     @Override
-    public Page<ClaimResponse> getAllClaims(Pageable pageable) {
+    public Page<ClaimResponse> getAllClaims(
+            Pageable pageable
+    ) {
 
         return claimRepository
                 .findAll(pageable)
@@ -100,16 +124,23 @@ public class ClaimServiceImpl implements ClaimService {
     }
 
     @Override
-    public Page<ClaimResponse> getPendingClaims(Pageable pageable) {
+    public Page<ClaimResponse> getPendingClaims(
+            Pageable pageable
+    ) {
 
         return claimRepository
-                .findByStatus(ClaimStatus.PENDING, pageable)
+                .findByStatus(
+                        ClaimStatus.PENDING,
+                        pageable
+                )
                 .map(this::mapToResponse);
     }
 
     @Override
     @Transactional
-    public ClaimResponse approveClaim(Long id) {
+    public ClaimResponse approveClaim(
+            Long id
+    ) {
 
         Claim claim = getClaim(id);
 
@@ -123,57 +154,131 @@ public class ClaimServiceImpl implements ClaimService {
             );
         }
 
-        if (claimRepository.existsByItemIdAndStatus(
-                item.getId(),
-                ClaimStatus.APPROVED
-        )) {
+        if (claimRepository
+                .existsByItemIdAndStatus(
+                        item.getId(),
+                        ClaimStatus.APPROVED
+                )) {
+
             throw new RuntimeException(
                     "This item has already been claimed successfully"
             );
         }
 
-        claim.setStatus(ClaimStatus.APPROVED);
+        /*
+         * Fetch competing claims BEFORE bulk rejection.
+         *
+         * We need their user + claim IDs for
+         * individual rejection notifications.
+         */
+        List<Claim> competingClaims =
+                claimRepository
+                        .findByItemIdAndStatusAndIdNot(
+                                item.getId(),
+                                ClaimStatus.PENDING,
+                                claim.getId()
+                        );
 
-        item.setStatus(ItemStatus.CLOSED);
-
-        claimRepository.rejectOtherPendingClaims(
-                item.getId(),
-                claim.getId()
+        /*
+         * Existing business logic remains unchanged.
+         */
+        claim.setStatus(
+                ClaimStatus.APPROVED
         );
+
+        item.setStatus(
+                ItemStatus.CLOSED
+        );
+
+        claimRepository
+                .rejectOtherPendingClaims(
+                        item.getId(),
+                        claim.getId()
+                );
 
         itemRepository.save(item);
 
-        Claim updatedClaim = claimRepository.save(claim);
+        Claim updatedClaim =
+                claimRepository.save(claim);
+
+        /*
+         * Approved student's notification.
+         */
+        notificationService
+                .notifyClaimApproved(
+                        claim.getClaimedBy(),
+                        claim.getId(),
+                        item.getId(),
+                        item.getTitle()
+                );
+
+        /*
+         * Every competing student's own rejection notification.
+         */
+        for (Claim competingClaim : competingClaims) {
+
+            notificationService
+                    .notifyClaimRejected(
+                            competingClaim.getClaimedBy(),
+                            competingClaim.getId(),
+                            item.getId(),
+                            item.getTitle()
+                    );
+        }
 
         return mapToResponse(updatedClaim);
     }
 
     @Override
     @Transactional
-    public ClaimResponse rejectClaim(Long id) {
+    public ClaimResponse rejectClaim(
+            Long id
+    ) {
 
         Claim claim = getClaim(id);
 
         validatePending(claim);
 
-        claim.setStatus(ClaimStatus.REJECTED);
+        claim.setStatus(
+                ClaimStatus.REJECTED
+        );
 
-        Claim updatedClaim = claimRepository.save(claim);
+        Claim updatedClaim =
+                claimRepository.save(claim);
+
+        Item item = claim.getItem();
+
+        notificationService
+                .notifyClaimRejected(
+                        claim.getClaimedBy(),
+                        claim.getId(),
+                        item.getId(),
+                        item.getTitle()
+                );
 
         return mapToResponse(updatedClaim);
     }
 
-    private Claim getClaim(Long id) {
+    private Claim getClaim(
+            Long id
+    ) {
 
-        return claimRepository.findById(id)
+        return claimRepository
+                .findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Claim not found")
+                        new RuntimeException(
+                                "Claim not found"
+                        )
                 );
     }
 
-    private void validatePending(Claim claim) {
+    private void validatePending(
+            Claim claim
+    ) {
 
-        if (claim.getStatus() != ClaimStatus.PENDING) {
+        if (claim.getStatus()
+                != ClaimStatus.PENDING) {
+
             throw new RuntimeException(
                     "Only pending claims can be approved or rejected"
             );
@@ -182,31 +287,56 @@ public class ClaimServiceImpl implements ClaimService {
 
     private User getCurrentUser() {
 
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        String email =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                        .getName();
 
         return userRepository
                 .findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("User not found")
+                        new RuntimeException(
+                                "User not found"
+                        )
                 );
     }
 
-    private ClaimResponse mapToResponse(Claim claim) {
+    private ClaimResponse mapToResponse(
+            Claim claim
+    ) {
 
         return ClaimResponse.builder()
                 .id(claim.getId())
-                .itemId(claim.getItem().getId())
-                .itemTitle(claim.getItem().getTitle())
-                .claimedById(claim.getClaimedBy().getId())
-                .claimedBy(claim.getClaimedBy().getFullName())
-                .claimantEmail(claim.getClaimedBy().getEmail())
-                .reason(claim.getReason())
-                .status(claim.getStatus())
-                .createdAt(claim.getCreatedAt())
-                .updatedAt(claim.getUpdatedAt())
+                .itemId(
+                        claim.getItem().getId()
+                )
+                .itemTitle(
+                        claim.getItem().getTitle()
+                )
+                .claimedById(
+                        claim.getClaimedBy().getId()
+                )
+                .claimedBy(
+                        claim.getClaimedBy()
+                                .getFullName()
+                )
+                .claimantEmail(
+                        claim.getClaimedBy()
+                                .getEmail()
+                )
+                .reason(
+                        claim.getReason()
+                )
+                .status(
+                        claim.getStatus()
+                )
+                .createdAt(
+                        claim.getCreatedAt()
+                )
+                .updatedAt(
+                        claim.getUpdatedAt()
+                )
                 .build();
     }
 }
