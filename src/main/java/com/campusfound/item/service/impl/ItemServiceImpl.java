@@ -185,6 +185,13 @@ public class ItemServiceImpl implements ItemService {
                         keyword
                 )
                 .stream()
+                .sorted(
+                        (first, second) ->
+                                second.getCreatedAt()
+                                        .compareTo(
+                                                first.getCreatedAt()
+                                        )
+                )
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -234,6 +241,13 @@ public class ItemServiceImpl implements ItemService {
 
         return items
                 .stream()
+                .sorted(
+                        (first, second) ->
+                                second.getCreatedAt()
+                                        .compareTo(
+                                                first.getCreatedAt()
+                                        )
+                )
                 .map(this::mapToResponse)
                 .toList();
     }
