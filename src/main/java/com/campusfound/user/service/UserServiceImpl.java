@@ -20,47 +20,45 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponse getCurrentUser() {
 
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        String email = getAuthenticatedEmail();
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository
+                .findByEmail(email)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found")
+                );
 
         return mapToResponse(user);
     }
 
     @Override
-    public UserResponse updateProfile(UpdateProfileRequest request) {
+    public UserResponse updateProfile(
+            UpdateProfileRequest request
+    ) {
 
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        String email = getAuthenticatedEmail();
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository
+                .findByEmail(email)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found")
+                );
 
-        user.setFullName(request.getFullName());
-        user.setPhone(request.getPhone());
+        if (request.getFullName() != null) {
+            user.setFullName(
+                    request.getFullName().trim()
+            );
+        }
+
+        if (request.getPhone() != null) {
+            user.setPhone(
+                    request.getPhone().trim()
+            );
+        }
 
         userRepository.save(user);
 
         return mapToResponse(user);
-    }
-
-    private UserResponse mapToResponse(User user) {
-
-        return UserResponse.builder()
-                .id(user.getId())
-                .fullName(user.getFullName())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .department(user.getDepartment())
-                .year(user.getYear())
-                .role(user.getRole())
-                .build();
     }
 
     @Override
@@ -70,14 +68,15 @@ public class UserServiceImpl implements UserService {
     ) {
 
         User user = userRepository
-                .findByEmail(email)
+                .findByEmail(
+                        email.trim().toLowerCase()
+                )
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "User not found"
                         )
                 );
 
-        // Verify current password
         if (!passwordEncoder.matches(
                 request.getCurrentPassword(),
                 user.getPassword()
@@ -87,7 +86,6 @@ public class UserServiceImpl implements UserService {
             );
         }
 
-        // Prevent reusing the same password
         if (passwordEncoder.matches(
                 request.getNewPassword(),
                 user.getPassword()
@@ -104,5 +102,30 @@ public class UserServiceImpl implements UserService {
         );
 
         userRepository.save(user);
+    }
+
+    private String getAuthenticatedEmail() {
+
+        return SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName()
+                .trim()
+                .toLowerCase();
+    }
+
+    private UserResponse mapToResponse(
+            User user
+    ) {
+
+        return UserResponse.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .department(user.getDepartment())
+                .year(user.getYear())
+                .role(user.getRole())
+                .build();
     }
 }

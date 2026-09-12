@@ -32,8 +32,8 @@ public class User implements UserDetails {
 
     private String phone;
 
-    @Enumerated(EnumType.STRING)
-    private Department department;
+    @Column(nullable = false, length = 100)
+    private String department;
 
     private Integer year;
 
