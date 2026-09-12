@@ -1,7 +1,9 @@
 package com.campusfound.auth.service;
+
 import com.campusfound.auth.dto.AuthResponse;
-import com.campusfound.auth.dto.RegisterRequest;
 import com.campusfound.auth.dto.LoginRequest;
+import com.campusfound.auth.dto.RegisterRequest;
+import com.campusfound.security.jwt.JwtService;
 import com.campusfound.user.entity.Role;
 import com.campusfound.user.entity.User;
 import com.campusfound.user.repository.UserRepository;
@@ -9,7 +11,6 @@ import com.campusfound.verification.service.EmailVerificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import com.campusfound.security.jwt.JwtService;
 
 @Service
 @RequiredArgsConstructor
@@ -21,27 +22,43 @@ public class AuthService {
     private final EmailVerificationService emailVerificationService;
 
     public AuthResponse register(RegisterRequest request) {
-        String email = request.getEmail().trim().toLowerCase();
 
-        if (!emailVerificationService
-                .isEmailVerified(email)) {
+        String email =
+                request.getEmail()
+                        .trim()
+                        .toLowerCase();
 
+        if (!emailVerificationService.isEmailVerified(email)) {
             throw new RuntimeException(
                     "Email verification is required before registration"
             );
         }
 
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+        if (userRepository.existsByEmail(email)) {
+            throw new RuntimeException(
+                    "An account already exists with this email"
+            );
         }
 
         User user = User.builder()
-                .fullName(request.getFullName())
+                .fullName(
+                        request.getFullName().trim()
+                )
                 .email(email)
-                .password(passwordEncoder.encode(request.getPassword()))
-                .phone(request.getPhone())
-                .department(request.getDepartment())
-                .year(request.getYear())
+                .password(
+                        passwordEncoder.encode(
+                                request.getPassword()
+                        )
+                )
+                .phone(
+                        request.getPhone().trim()
+                )
+                .department(
+                        request.getDepartment().trim()
+                )
+                .year(
+                        request.getYear()
+                )
                 .role(Role.STUDENT)
                 .build();
 
@@ -57,14 +74,31 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+        String email =
+                request.getEmail()
+                        .trim()
+                        .toLowerCase();
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid email or password");
+        User user =
+                userRepository
+                        .findByEmail(email)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Invalid email or password"
+                                )
+                        );
+
+        if (!passwordEncoder.matches(
+                request.getPassword(),
+                user.getPassword()
+        )) {
+            throw new RuntimeException(
+                    "Invalid email or password"
+            );
         }
 
-        String token = jwtService.generateToken(user);
+        String token =
+                jwtService.generateToken(user);
 
         return new AuthResponse(
                 token,

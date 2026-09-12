@@ -17,7 +17,7 @@ public class UserResponse {
 
     private String phone;
 
-    private Department department;
+    private String department;
 
     private Integer year;
 
